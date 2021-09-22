@@ -21,21 +21,18 @@ RCT_EXPORT_METHOD(canAddPasses:(RCTResponseSenderBlock)callback) {
 }
 
 RCT_EXPORT_METHOD(
-                  addPassFromUrl:(NSString *)pass
+                  addPassFromFile:(NSString *)base64Encoded
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
                   ) {
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    NSURL *passURL = [[NSURL alloc] initWithString:pass];
-    if (!passURL) {
-      reject(rejectCode, @"The pass URL is invalid", nil);
-      return;
-    }
+    NSData *data = [[NSData alloc] initWithBase64EncodedString:base64Encoded options:NSUTF8StringEncoding];
+    NSError *error;
+    PKPass *pass = [[PKPass alloc] initWithData:data error:&error];
     
-    NSData *data = [[NSData alloc] initWithContentsOfURL:passURL];
-    if (!data) {
-      reject(rejectCode, @"The pass data is invalid", nil);
-      return;
+    if (error) {
+        reject(@"", @"Failed to create pass.", error);
+        return;
     }
     
     [self showViewControllerWithData:data resolver:resolve rejecter:reject];
@@ -59,32 +56,6 @@ RCT_EXPORT_METHOD(
   }
   
   resolve(@(NO));
-  return;
-}
-
-RCT_EXPORT_METHOD(
-                  removePass:(NSString *)cardIdentifier
-                  serialNumber:(nullable NSString *)cardSerialNumber
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
-{
-  PKPassLibrary *passLibrary = [[PKPassLibrary alloc] init];
-  NSArray *passes = [passLibrary passes];
-  
-  BOOL result = FALSE;
-  
-  for (PKPass *pass in passes) {
-    if ([self checkPassByIdentifier:pass identifier:cardIdentifier serialNumber:cardSerialNumber]) {
-      [passLibrary removePass:pass];
-      result = TRUE;
-    }
-  }
-  
-  if (result == TRUE) {
-    resolve(@(YES));
-  } else {
-    resolve(@(NO));
-  }
   return;
 }
 
